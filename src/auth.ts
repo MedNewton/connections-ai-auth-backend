@@ -13,7 +13,17 @@ export const auth = betterAuth({
   advanced: {
     useSecureCookies: true,
   },
+  trustedOrigins: [
+    // Basic scheme
+    "connection-ai://",
 
+    // Production & staging schemes
+    "connection-ai-prod://",
+    "connection-ai-staging://",
+
+    // Wildcard support for all paths following the scheme
+    "connection-ai://*"
+  ],
   socialProviders: {
     google: {
       clientId: env.googleClientId,
