@@ -15,14 +15,14 @@ export const auth = betterAuth({
   },
   trustedOrigins: [
     // Basic scheme
-    "connection-ai://",
+    "connections-ai://",
 
     // Production & staging schemes
-    "connection-ai-prod://",
-    "connection-ai-staging://",
+    "connections-ai-prod://",
+    "connections-ai-staging://",
 
     // Wildcard support for all paths following the scheme
-    "connection-ai://*",
+    "connections-ai://*",
     "exp://",                      // Trust all Expo URLs (prefix matching)
     "exp://**",                    // Trust all Expo URLs (wildcard matching)
     "exp://192.168.*.*:*/**",
