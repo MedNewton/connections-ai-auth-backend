@@ -22,7 +22,10 @@ export const auth = betterAuth({
     "connection-ai-staging://",
 
     // Wildcard support for all paths following the scheme
-    "connection-ai://*"
+    "connection-ai://*",
+    "exp://",                      // Trust all Expo URLs (prefix matching)
+    "exp://**",                    // Trust all Expo URLs (wildcard matching)
+    "exp://192.168.*.*:*/**",
   ],
   socialProviders: {
     google: {
