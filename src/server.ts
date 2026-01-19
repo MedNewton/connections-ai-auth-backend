@@ -33,9 +33,14 @@ app.all("/api/auth/*", async (req, reply) => {
     const body =
         req.method === "GET" || req.method === "HEAD"
             ? undefined
-            : req.body
-                ? JSON.stringify(req.body)
-                : undefined;
+            : typeof req.body === "string"
+                ? req.body
+                : req.body instanceof Buffer
+                    ? req.body.toString("utf8")
+                    : req.body != null
+                        ? JSON.stringify(req.body)
+                        : undefined;
+
 
     const res = await auth.handler(
         new Request(url.toString(), {
