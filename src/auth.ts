@@ -4,6 +4,7 @@ import { prisma } from "./db.js";
 import { env } from "./env.js";
 import { sendEmail } from "./mailer.js";
 import { emailOTP } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
 
 export const auth = betterAuth({
   secret: env.authSecret,
@@ -14,18 +15,12 @@ export const auth = betterAuth({
     useSecureCookies: true,
   },
   trustedOrigins: [
-    // Basic scheme
-    "connections-ai://",
-
-    // Production & staging schemes
-    "connections-ai-prod://",
-    "connections-ai-staging://",
-
-    // Wildcard support for all paths following the scheme
-    "connections-ai://*",
-    "exp://",                      // Trust all Expo URLs (prefix matching)
-    "exp://**",                    // Trust all Expo URLs (wildcard matching)
-    "exp://192.168.*.*:*/**",
+    "connectionsai://",
+    "connectionsai://*",
+    "exp://",
+    "exp://*",
+    "exps://",
+    "exps://*",
   ],
   socialProviders: {
     google: {
@@ -38,6 +33,7 @@ export const auth = betterAuth({
   emailAndPassword: { enabled: true },
 
   plugins: [
+    expo(),
     emailOTP({
       expiresIn: 10 * 60,
       async sendVerificationOTP({ email, otp, type }) {

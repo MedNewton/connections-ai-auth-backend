@@ -11,6 +11,7 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
+    "@better-auth/expo": "^1.4.15",
     "@fastify/cors": "^9.0.0",
     "@prisma/client": "^6.19.2",
     "better-auth": "^1.0.0",
