@@ -1,0 +1,27 @@
+{
+  "name": "connections-ai-auth-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.0",
+    "@prisma/client": "^6.19.2",
+    "better-auth": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "resend": "^6.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.7",
+    "prisma": "^6.19.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
