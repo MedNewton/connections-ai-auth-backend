@@ -22,4 +22,7 @@ export const env = {
   authSecret: required("AUTH_SECRET"),
   emailFrom: optional("EMAIL_FROM", "no-reply@example.com"),
   resendApiKey: required("RESEND_API_KEY"),
+  googleClientId: required("GOOGLE_CLIENT_ID"),
+  googleClientSecret: required("GOOGLE_CLIENT_SECRET"),
+
 };

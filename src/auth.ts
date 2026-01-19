@@ -10,9 +10,16 @@ export const auth = betterAuth({
   baseURL: env.baseUrl,
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
-  // Force Secure cookies when served over HTTPS
   advanced: {
     useSecureCookies: true,
+  },
+
+  socialProviders: {
+    google: {
+      clientId: env.googleClientId,
+      clientSecret: env.googleClientSecret,
+      prompt: "select_account",
+    },
   },
 
   emailAndPassword: { enabled: true },
@@ -34,7 +41,7 @@ export const auth = betterAuth({
           html: `<p>Your code is: <strong>${otp}</strong></p>`,
         });
 
-        // Optional: remove in production
+        // remove later in production if you want
         console.log("[OTP]", { email, otp, type });
       },
     }),
