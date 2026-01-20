@@ -21,6 +21,7 @@ export const auth = betterAuth({
     "exp://*",
     "exps://",
     "exps://*",
+    "https://auth.expo.io", 
   ],
   socialProviders: {
     google: {
