@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { env } from "./env.js";
 import { auth } from "./auth.js";
+import { stripeRoutes } from "./stripe-routes.js";
 
 
 const app = Fastify({ logger: true });
@@ -73,5 +74,7 @@ app.get("/auth/google", async (req, reply) => {
     return reply.redirect(data.url);
 });
 
+
+app.register(stripeRoutes, { prefix: "/stripe" });
 
 await app.listen({ port: env.port, host: "0.0.0.0" });

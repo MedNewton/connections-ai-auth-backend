@@ -17,7 +17,9 @@
     "better-auth": "^1.0.0",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
-    "resend": "^6.7.0"
+    "firebase-admin": "^13.7.0",
+    "resend": "^6.7.0",
+    "stripe": "^20.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.19.7",

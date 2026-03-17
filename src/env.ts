@@ -24,5 +24,8 @@ export const env = {
   resendApiKey: required("RESEND_API_KEY"),
   googleClientId: required("GOOGLE_CLIENT_ID"),
   googleClientSecret: required("GOOGLE_CLIENT_SECRET"),
-
+  stripeSecretKey: required("STRIPE_SECRET_KEY"),
+  stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
+  firebaseDatabaseUrl: required("FIREBASE_DATABASE_URL"),
+  firebaseServiceAccount: required("FIREBASE_SERVICE_ACCOUNT"),
 };
