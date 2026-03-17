@@ -179,51 +179,52 @@ export async function stripeRoutes(fastify: FastifyInstance) {
   // ──────────────────────────────────────────────
 
   // Override JSON parser for this plugin scope to preserve raw body
-  fastify.addContentTypeParser(
-    "application/json",
-    { parseAs: "buffer" },
-    (_req, body, done) => {
-      done(null, body);
-    }
-  );
-
-  fastify.post("/webhooks", async (req, reply) => {
-    const sig = req.headers["stripe-signature"] as string;
-
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(
-        req.body as Buffer,
-        sig,
-        env.stripeWebhookSecret
-      );
-    } catch (err: any) {
-      req.log.error(err, "Webhook signature verification failed");
-      return reply.status(400).send({ error: `Webhook Error: ${err.message}` });
-    }
-
-    req.log.info({ eventType: event.type, eventId: event.id }, "Stripe webhook received");
-
-    try {
-      switch (event.type) {
-        case "payment_intent.succeeded":
-          await handlePaymentSucceeded(event.data.object, req.log);
-          break;
-        case "payment_intent.payment_failed":
-          await handlePaymentFailed(event.data.object, req.log);
-          break;
-        case "account.updated":
-          await handleAccountUpdated(event.data.object, req.log);
-          break;
-        default:
-          req.log.info({ eventType: event.type }, "Unhandled event type");
+  fastify.register(async function webhookPlugin(instance) {
+    instance.addContentTypeParser(
+      "application/json",
+      { parseAs: "buffer" },
+      (_req, body, done) => {
+        done(null, body);
       }
-    } catch (err: any) {
-      req.log.error(err, "Error processing webhook event");
-      // Always return 200 to Stripe to avoid retries
-    }
+    );
 
-    return reply.send({ received: true });
+    instance.post("/webhooks", async (req, reply) => {
+      const sig = req.headers["stripe-signature"] as string;
+
+      let event;
+      try {
+        event = stripe.webhooks.constructEvent(
+          req.body as Buffer,
+          sig,
+          env.stripeWebhookSecret
+        );
+      } catch (err: any) {
+        req.log.error(err, "Webhook signature verification failed");
+        return reply.status(400).send({ error: `Webhook Error: ${err.message}` });
+      }
+
+      req.log.info({ eventType: event.type, eventId: event.id }, "Stripe webhook received");
+
+      try {
+        switch (event.type) {
+          case "payment_intent.succeeded":
+            await handlePaymentSucceeded(event.data.object, req.log);
+            break;
+          case "payment_intent.payment_failed":
+            await handlePaymentFailed(event.data.object, req.log);
+            break;
+          case "account.updated":
+            await handleAccountUpdated(event.data.object, req.log);
+            break;
+          default:
+            req.log.info({ eventType: event.type }, "Unhandled event type");
+        }
+      } catch (err: any) {
+        req.log.error(err, "Error processing webhook event");
+      }
+
+      return reply.send({ received: true });
+    });
   });
 
   // ──────────────────────────────────────────────
