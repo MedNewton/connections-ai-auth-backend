@@ -27,5 +27,7 @@ export const env = {
   stripeSecretKey: required("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
   firebaseDatabaseUrl: required("FIREBASE_DATABASE_URL"),
-  firebaseServiceAccount: required("FIREBASE_SERVICE_ACCOUNT"),
+  firebaseProjectId: required("FIREBASE_PROJECT_ID"),
+  firebaseClientEmail: required("FIREBASE_CLIENT_EMAIL"),
+  firebasePrivateKey: required("FIREBASE_PRIVATE_KEY"),
 };

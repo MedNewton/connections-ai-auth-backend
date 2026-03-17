@@ -1,13 +1,13 @@
 import admin from "firebase-admin";
 import { env } from "./env.js";
 
-const serviceAccount = JSON.parse(
-  Buffer.from(env.firebaseServiceAccount, "base64").toString("utf-8")
-);
-
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert({
+      projectId: env.firebaseProjectId,
+      clientEmail: env.firebaseClientEmail,
+      privateKey: env.firebasePrivateKey.replace(/\\n/g, "\n"),
+    }),
     databaseURL: env.firebaseDatabaseUrl,
   });
 }
