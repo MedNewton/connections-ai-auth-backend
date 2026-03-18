@@ -246,9 +246,9 @@ export async function stripeRoutes(fastify: FastifyInstance) {
 
         return reply.send({
           status:
-            account.charges_enabled && account.payouts_enabled
-              ? "verified"
-              : "pending",
+              account.details_submitted && account.charges_enabled && account.payouts_enabled                                                                          
+                ? "verified"                                                                                                                                           
+                : "pending",
           chargesEnabled: account.charges_enabled,
           payoutsEnabled: account.payouts_enabled,
           kybStatus: creator.kyb?.status,
