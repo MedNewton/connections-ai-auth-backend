@@ -87,8 +87,8 @@ export async function stripeRoutes(fastify: FastifyInstance) {
       // Create Account Link for onboarding
       const accountLink = await stripe.accountLinks.create({
         account: stripeAccountId,
-        refresh_url: "connectionsai://stripe-refresh",
-        return_url: "connectionsai://stripe-return",
+        refresh_url: `${env.baseUrl}/stripe/connect-refresh`,
+        return_url: `${env.baseUrl}/stripe/connect-return`,
         type: "account_onboarding",
       });
 
@@ -259,6 +259,14 @@ export async function stripeRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  fastify.get("/connect-return", async (_req, reply) => {
+    return reply.redirect("connectionsai://stripe-return");
+  });
+
+  fastify.get("/connect-refresh", async (_req, reply) => {
+    return reply.redirect("connectionsai://stripe-refresh");
+  });
 }
 
 // ──────────────────────────────────────────────
@@ -287,31 +295,22 @@ async function handlePaymentSucceeded(paymentIntent: any, log: any) {
   }
 
   const now = Date.now();
-  const ticketCount = (purchase.lineItems || []).reduce(
-    (sum: number, item: any) => sum + (item.quantity || 0),
-    0
-  );
+  const confirmationCode = generateConfirmation();
 
-  // Update purchase
+  // Update purchase status
   await db.ref(`/purchases/${purchaseId}`).update({
     status: "completed",
+    confirmationCode,
     completedAt: now,
-    confirmation: {
-      confirmationNumber: generateConfirmation(),
-      purchasedAt: new Date().toISOString(),
-      ticketCount,
-      totalAmount: purchase.total,
-      currency: purchase.currency,
-    },
-    reservedAt: null,
-    reservationExpiresAt: null,
     updatedAt: now,
   });
 
-  // Mark all tickets as sold
+  // Update ticket statuses to "sold"
   const ticketUpdates: Record<string, any> = {};
+  let ticketCount = 0;
   for (const item of purchase.lineItems || []) {
     for (const ticketId of item.ticketIds || []) {
+      ticketCount++;
       ticketUpdates[`/events/${purchase.eventId}/tickets/${ticketId}/status`] = "sold";
       ticketUpdates[`/events/${purchase.eventId}/tickets/${ticketId}/reservationExpiresAt`] = null;
       ticketUpdates[`/events/${purchase.eventId}/tickets/${ticketId}/updatedAt`] = now;
