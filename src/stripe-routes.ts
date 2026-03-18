@@ -92,11 +92,15 @@ export async function stripeRoutes(fastify: FastifyInstance) {
       }
 
       // Create Account Link for onboarding
-      const accountLink = await stripe.accountLinks.create({
-        account: stripeAccountId,
-        refresh_url: `${env.baseUrl}/stripe/connect-refresh`,
-        return_url: `${env.baseUrl}/stripe/connect-return`,
-        type: "account_onboarding",
+      const accountLink = await stripe.accountLinks.create({                                                                                                               
+        account: stripeAccountId,                                                                                                                                          
+        refresh_url: `${env.baseUrl}/stripe/connect-refresh`,                                                                                                              
+        return_url: `${env.baseUrl}/stripe/connect-return`,                                                                                                                
+        type: "account_onboarding",                                                                                                                                        
+        collection_options: {                                                                                                                                              
+          fields: "eventually_due",                                                                                                                                        
+          future_requirements: "include",                                                                                                                                  
+        },                                                      
       });
 
       return reply.send({
