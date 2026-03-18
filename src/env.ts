@@ -26,6 +26,7 @@ export const env = {
   googleClientSecret: required("GOOGLE_CLIENT_SECRET"),
   stripeSecretKey: required("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
+  stripeClientId : required("STRIPE_CLIENT_ID"),
   firebaseDatabaseUrl: required("FIREBASE_DATABASE_URL"),
   firebaseProjectId: required("FIREBASE_PROJECT_ID"),
   firebaseClientEmail: required("FIREBASE_CLIENT_EMAIL"),

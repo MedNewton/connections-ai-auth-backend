@@ -29,88 +29,161 @@ async function findCreatorByField(field: string, value: string) {
 export async function stripeRoutes(fastify: FastifyInstance) {
   // ──────────────────────────────────────────────
   // POST /stripe/create-connect-account
+  // Generates a Stripe OAuth URL for Standard Connect
   // ──────────────────────────────────────────────
   fastify.post<{
-    Body: { userId: string; email: string; businessType: "individual" | "company" };
+    Body: { userId: string; email: string };
   }>("/create-connect-account", async (req, reply) => {
-    const { userId, email, businessType } = req.body;
+    const { userId, email } = req.body;
 
     try {
       // Check if creator already exists for this user
       const existing = await findCreatorByField("userId", userId);
 
-      let creatorId: string;
-      let stripeAccountId: string;
-
       if (existing?.stripeAccountId) {
-        // Already has a Stripe account — just create a new Account Link
-        creatorId = existing.id;
-        stripeAccountId = existing.stripeAccountId;
-      } else {
-        // Create new Stripe Connect Express account
-        const isTestMode = env.stripeSecretKey.startsWith("sk_test_");
-
-        const account = await stripe.accounts.create({
-          type: "express",
-          email,
-          business_type: businessType,
-          capabilities: {
-            card_payments: { requested: true },
-            transfers: { requested: true },
-          },
-          ...(isTestMode && {
-            individual: {
-              id_number: "000000000",
-            },
-          }),
-        });
-
-        stripeAccountId = account.id;
-        creatorId = "c_" + crypto.randomUUID().replace(/-/g, "");
-        const now = Date.now();
-
-        // Write creator record to Firebase
-        await db.ref(`/creators/${creatorId}`).set({
-          id: creatorId,
-          userId,
-          stripeAccountId,
-          businessName: null,
-          businessType,
-          kyb: { status: "pending", submittedAt: now, verifiedAt: null },
-          payout: { method: "stripe", configured: false },
-          stats: { totalEvents: 0, totalTicketsSold: 0, rating: null },
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        // Update user record
-        await db.ref(`/users/${userId}`).update({
-          userType: "creator",
-          creatorId,
-          updatedAt: now,
+        return reply.send({
+          alreadyConnected: true,
+          creatorId: existing.id,
+          stripeAccountId: existing.stripeAccountId,
         });
       }
 
-      // Create Account Link for onboarding
-      const accountLink = await stripe.accountLinks.create({                                                                                                               
-        account: stripeAccountId,                                                                                                                                          
-        refresh_url: `${env.baseUrl}/stripe/connect-refresh`,                                                                                                              
-        return_url: `${env.baseUrl}/stripe/connect-return`,                                                                                                                
-        type: "account_onboarding",                                                                                                                                        
-        collection_options: {                                                                                                                                              
-          fields: "eventually_due",                                                                                                                                        
-          future_requirements: "include",                                                                                                                                  
-        },                                                      
+      // Generate Stripe OAuth URL — creator connects their own account
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: env.stripeClientId,
+        scope: "read_write",
+        redirect_uri: `${env.baseUrl}/stripe/connect-callback`,
+        "stripe_user[email]": email,
+        state: userId,
       });
 
-      return reply.send({
-        url: accountLink.url,
-        creatorId,
-        stripeAccountId,
-      });
+      const url = `https://connect.stripe.com/oauth/authorize?${params.toString()}`;
+
+      return reply.send({ url });
     } catch (err: any) {
-      req.log.error(err, "Failed to create connect account");
+      req.log.error(err, "Failed to create connect link");
       return reply.status(500).send({ error: err.message });
+    }
+  });
+
+  // ──────────────────────────────────────────────
+  // GET /stripe/connect-callback
+  // Handles Stripe OAuth redirect after creator authorizes
+  // ──────────────────────────────────────────────
+  fastify.get<{
+    Querystring: { code?: string; state?: string; error?: string; error_description?: string };
+  }>("/connect-callback", async (req, reply) => {
+    const { code, state: userId, error, error_description } = req.query;
+
+    if (error) {
+      req.log.error({ error, error_description }, "Stripe OAuth error");
+      return reply.type("text/html").send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Connection Failed</title>
+            <style>
+              body { font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F6F6F6; text-align: center; padding: 20px; }
+              .card { background: white; border-radius: 16px; padding: 40px; max-width: 360px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+              h1 { color: #EF4444; font-size: 24px; margin-bottom: 12px; }
+              p { color: #6B7280; font-size: 16px; line-height: 1.5; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Connection Failed</h1>
+              <p>${error_description || "Something went wrong. Please try again from the app."}</p>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+
+    if (!code || !userId) {
+      return reply.status(400).send({ error: "Missing code or state" });
+    }
+
+    try {
+      // Exchange OAuth code for the creator's Stripe account ID
+      const response = await stripe.oauth.token({
+        grant_type: "authorization_code",
+        code,
+      });
+
+      const stripeAccountId = response.stripe_user_id!;
+      const creatorId = "c_" + crypto.randomUUID().replace(/-/g, "");
+      const now = Date.now();
+
+      // Write creator record to Firebase
+      await db.ref(`/creators/${creatorId}`).set({
+        id: creatorId,
+        userId,
+        stripeAccountId,
+        businessName: null,
+        businessType: "individual",
+        kyb: { status: "verified", submittedAt: now, verifiedAt: now },
+        payout: { method: "stripe", configured: true },
+        stats: { totalEvents: 0, totalTicketsSold: 0, rating: null },
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // Update user record
+      await db.ref(`/users/${userId}`).update({
+        userType: "creator",
+        creatorId,
+        updatedAt: now,
+      });
+
+      req.log.info({ creatorId, stripeAccountId, userId }, "Creator connected via OAuth");
+
+      // Show success page
+      return reply.type("text/html").send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Connected!</title>
+            <style>
+              body { font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F6F6F6; text-align: center; padding: 20px; }
+              .card { background: white; border-radius: 16px; padding: 40px; max-width: 360px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+              h1 { color: #10B981; font-size: 24px; margin-bottom: 12px; }
+              p { color: #6B7280; font-size: 16px; line-height: 1.5; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Stripe Connected!</h1>
+              <p>Your account is linked. You can close this page and return to the app.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    } catch (err: any) {
+      req.log.error(err, "Failed to complete Stripe OAuth");
+      return reply.type("text/html").send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Connection Failed</title>
+            <style>
+              body { font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F6F6F6; text-align: center; padding: 20px; }
+              .card { background: white; border-radius: 16px; padding: 40px; max-width: 360px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+              h1 { color: #EF4444; font-size: 24px; margin-bottom: 12px; }
+              p { color: #6B7280; font-size: 16px; line-height: 1.5; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Connection Failed</h1>
+              <p>Something went wrong. Please try again from the app.</p>
+            </div>
+          </body>
+        </html>
+      `);
     }
   });
 
@@ -255,14 +328,26 @@ export async function stripeRoutes(fastify: FastifyInstance) {
 
         const account = await stripe.accounts.retrieve(creator.stripeAccountId);
 
+        const isVerified =
+          account.charges_enabled && account.payouts_enabled;
+
+        // Sync Firebase if Stripe says verified but Firebase still shows pending
+        if (isVerified && creator.kyb?.status !== "verified") {
+          const now = Date.now();
+          await db.ref(`/creators/${creator.key}`).update({
+            "kyb/status": "verified",
+            "kyb/verifiedAt": now,
+            "payout/configured": true,
+            updatedAt: now,
+          });
+          req.log.info({ creatorKey: creator.key }, "Synced verified status to Firebase");
+        }
+
         return reply.send({
-          status:
-            account.details_submitted && account.charges_enabled && account.payouts_enabled
-              ? "verified"
-              : "pending",
+          status: isVerified ? "verified" : "pending",
           chargesEnabled: account.charges_enabled,
           payoutsEnabled: account.payouts_enabled,
-          kybStatus: creator.kyb?.status,
+          kybStatus: isVerified ? "verified" : creator.kyb?.status,
         });
       } catch (err: any) {
         req.log.error(err, "Failed to get connect account status");
