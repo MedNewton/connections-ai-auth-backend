@@ -260,12 +260,54 @@ export async function stripeRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.get("/connect-return", async (_req, reply) => {
-    return reply.redirect("connectionsai://stripe-return");
+  fastify.get("/connect-return", async (_req, reply) => {                                                                                                              
+    return reply.type("text/html").send(`                                                                                                                              
+      <!DOCTYPE html>                                                                                                                                                  
+      <html>                                                                                                                                                           
+        <head>                                              
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Verification Submitted</title>                                                                                                                        
+          <style>
+            body { font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0;       
+  background: #F6F6F6; text-align: center; padding: 20px; }                                                                                                            
+            .card { background: white; border-radius: 16px; padding: 40px; max-width: 360px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+            h1 { color: #10B981; font-size: 24px; margin-bottom: 12px; }                                                                                               
+            p { color: #6B7280; font-size: 16px; line-height: 1.5; }                                                                                                   
+          </style>                                                                                                                                                     
+        </head>                                                                                                                                                        
+        <body>                                                                                                                                                         
+          <div class="card">                                
+            <h1>Verification Submitted!</h1>
+            <p>You can close this page and return to the app.</p>                                                                                                      
+          </div>
+        </body>                                                                                                                                                        
+      </html>                                               
+    `);
   });
 
   fastify.get("/connect-refresh", async (_req, reply) => {
-    return reply.redirect("connectionsai://stripe-refresh");
+    return reply.type("text/html").send(`
+      <!DOCTYPE html>                                                                                                                                                  
+      <html>
+        <head>                                                                                                                                                         
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Session Expired</title>
+          <style>
+            body { font-family: -apple-system, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0;       
+  background: #F6F6F6; text-align: center; padding: 20px; }                                                                                                            
+            .card { background: white; border-radius: 16px; padding: 40px; max-width: 360px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }                                
+            h1 { color: #F59E0B; font-size: 24px; margin-bottom: 12px; }                                                                                               
+            p { color: #6B7280; font-size: 16px; line-height: 1.5; }                                                                                                   
+          </style>                                                                                                                                                     
+        </head>                                                                                                                                                        
+        <body>                                                                                                                                                         
+          <div class="card">                                
+            <h1>Session Expired</h1>                                                                                                                                   
+            <p>Please close this page and try again from the app.</p>
+          </div>                                                                                                                                                       
+        </body>                                             
+      </html>                                                                                                                                                          
+    `);
   });
 }
 
