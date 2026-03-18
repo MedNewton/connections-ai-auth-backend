@@ -116,15 +116,23 @@ export async function stripeRoutes(fastify: FastifyInstance) {
       const creatorId = "c_" + crypto.randomUUID().replace(/-/g, "");
       const now = Date.now();
 
-      // Write creator record to Firebase
+      // Check actual Stripe account status
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+      const isVerified = account.charges_enabled && account.payouts_enabled;
+
+      // Write creator record to Firebase with actual status
       await db.ref(`/creators/${creatorId}`).set({
         id: creatorId,
         userId,
         stripeAccountId,
         businessName: null,
         businessType: "individual",
-        kyb: { status: "verified", submittedAt: now, verifiedAt: now },
-        payout: { method: "stripe", configured: true },
+        kyb: {
+          status: isVerified ? "verified" : "pending",
+          submittedAt: now,
+          verifiedAt: isVerified ? now : null,
+        },
+        payout: { method: "stripe", configured: isVerified },
         stats: { totalEvents: 0, totalTicketsSold: 0, rating: null },
         createdAt: now,
         updatedAt: now,
@@ -204,11 +212,22 @@ export async function stripeRoutes(fastify: FastifyInstance) {
         const purchase = purchaseSnap.val();
 
         // 2. Validate status
-        if (purchase.status !== "reserved") {
+        if (purchase.status !== "reserved" && purchase.status !== "payment_processing") {
           return reply.status(400).send({ error: `Invalid purchase status: ${purchase.status}` });
         }
-        if (purchase.reservationExpiresAt <= Date.now()) {
+        if (purchase.status === "reserved" && purchase.reservationExpiresAt <= Date.now()) {
           return reply.status(400).send({ error: "Reservation expired" });
+        }
+
+        // 2b. If already processing, return existing PaymentIntent
+        if (purchase.status === "payment_processing" && purchase.paymentIntentId) {
+          const existing = await stripe.paymentIntents.retrieve(purchase.paymentIntentId);
+          if (existing.status !== "canceled" && existing.status !== "succeeded") {
+            return reply.send({
+              clientSecret: existing.client_secret,
+              paymentIntentId: existing.id,
+            });
+          }
         }
 
         // 3. Read event to get creator
@@ -219,7 +238,12 @@ export async function stripeRoutes(fastify: FastifyInstance) {
         const event = eventSnap.val();
 
         // 4. Find creator's Stripe account
-        const creator = await findCreatorByField("userId", event.createdBy);
+        const creatorUserId = event.organizer?.id || event.createdBy;
+        if (!creatorUserId) {
+          req.log.error({ eventId: purchase.eventId, eventKeys: Object.keys(event) }, "No creator user ID found on event");
+          return reply.status(400).send({ error: "Event has no organizer ID" });
+        }
+        const creator = await findCreatorByField("userId", creatorUserId);
         if (!creator?.stripeAccountId) {
           return reply.status(400).send({ error: "Creator has not completed Stripe setup" });
         }
