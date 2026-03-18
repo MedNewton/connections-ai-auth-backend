@@ -48,6 +48,8 @@ export async function stripeRoutes(fastify: FastifyInstance) {
         stripeAccountId = existing.stripeAccountId;
       } else {
         // Create new Stripe Connect Express account
+        const isTestMode = env.stripeSecretKey.startsWith("sk_test_");
+
         const account = await stripe.accounts.create({
           type: "express",
           email,
@@ -56,6 +58,11 @@ export async function stripeRoutes(fastify: FastifyInstance) {
             card_payments: { requested: true },
             transfers: { requested: true },
           },
+          ...(isTestMode && {
+            individual: {
+              id_number: "000000000",
+            },
+          }),
         });
 
         stripeAccountId = account.id;
@@ -246,9 +253,9 @@ export async function stripeRoutes(fastify: FastifyInstance) {
 
         return reply.send({
           status:
-              account.details_submitted && account.charges_enabled && account.payouts_enabled                                                                          
-                ? "verified"                                                                                                                                           
-                : "pending",
+            account.details_submitted && account.charges_enabled && account.payouts_enabled
+              ? "verified"
+              : "pending",
           chargesEnabled: account.charges_enabled,
           payoutsEnabled: account.payouts_enabled,
           kybStatus: creator.kyb?.status,
@@ -260,7 +267,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.get("/connect-return", async (_req, reply) => {                                                                                                              
+  fastify.get("/connect-return", async (_req, reply) => {
     return reply.type("text/html").send(`                                                                                                                              
       <!DOCTYPE html>                                                                                                                                                  
       <html>                                                                                                                                                           
