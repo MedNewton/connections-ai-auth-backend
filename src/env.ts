@@ -31,4 +31,5 @@ export const env = {
   firebaseProjectId: required("FIREBASE_PROJECT_ID"),
   firebaseClientEmail: required("FIREBASE_CLIENT_EMAIL"),
   firebasePrivateKey: required("FIREBASE_PRIVATE_KEY"),
+  serviceToken: required("SERVICE_TOKEN"),
 };

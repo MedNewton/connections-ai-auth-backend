@@ -1,0 +1,33 @@
+import "dotenv/config";
+function required(name) {
+    const v = process.env[name];
+    if (!v || v.trim().length === 0)
+        throw new Error(`Missing env: ${name}`);
+    return v;
+}
+function optional(name, fallback) {
+    const v = process.env[name];
+    return v && v.trim().length > 0 ? v : fallback;
+}
+export const env = {
+    port: Number(optional("PORT", "4000")),
+    baseUrl: required("BASE_URL"),
+    databaseUrl: required("DATABASE_URL"),
+    corsOrigins: optional("CORS_ORIGINS", "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    authSecret: required("AUTH_SECRET"),
+    emailFrom: optional("EMAIL_FROM", "no-reply@example.com"),
+    resendApiKey: required("RESEND_API_KEY"),
+    googleClientId: required("GOOGLE_CLIENT_ID"),
+    googleClientSecret: required("GOOGLE_CLIENT_SECRET"),
+    stripeSecretKey: required("STRIPE_SECRET_KEY"),
+    stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
+    stripeClientId: required("STRIPE_CLIENT_ID"),
+    firebaseDatabaseUrl: required("FIREBASE_DATABASE_URL"),
+    firebaseProjectId: required("FIREBASE_PROJECT_ID"),
+    firebaseClientEmail: required("FIREBASE_CLIENT_EMAIL"),
+    firebasePrivateKey: required("FIREBASE_PRIVATE_KEY"),
+    serviceToken: required("SERVICE_TOKEN"),
+};

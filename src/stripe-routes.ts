@@ -3,6 +3,7 @@ import { FastifyInstance } from "fastify";
 import { stripe } from "./stripe.js";
 import { db } from "./firebase.js";
 import { env } from "./env.js";
+import { requireServiceToken } from "./middleware/serviceAuth.js";
 
 const CONFIRMATION_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -404,6 +405,102 @@ export async function stripeRoutes(fastify: FastifyInstance) {
       </html>                                               
     `);
   });
+
+  // ──────────────────────────────────────────────
+  // Service-token endpoints (called by Firebase Cloud Functions during
+  // account-deletion cascade). All require Authorization: Bearer <SERVICE_TOKEN>.
+  // ──────────────────────────────────────────────
+
+  fastify.post<{ Body: { customerId: string; uid?: string } }>(
+    "/delete-customer",
+    { preHandler: requireServiceToken },
+    async (req, reply) => {
+      const { customerId } = req.body ?? {};
+      if (!customerId) {
+        return reply.status(400).send({ error: "customerId required" });
+      }
+      try {
+        await stripe.customers.del(customerId);
+        req.log.info({ customerId }, "Stripe customer deleted");
+        return reply.send({ ok: true });
+      } catch (err: any) {
+        if (err?.code === "resource_missing") {
+          return reply.send({ ok: true, alreadyGone: true });
+        }
+        req.log.error(err, "Failed to delete Stripe customer");
+        return reply.status(500).send({ error: err.message });
+      }
+    }
+  );
+
+  fastify.post<{ Body: { creatorId: string; uid?: string } }>(
+    "/offboard-connect",
+    { preHandler: requireServiceToken },
+    async (req, reply) => {
+      const { creatorId } = req.body ?? {};
+      if (!creatorId) {
+        return reply.status(400).send({ error: "creatorId required" });
+      }
+      try {
+        const snap = await db.ref(`/creators/${creatorId}`).once("value");
+        if (!snap.exists()) {
+          return reply.send({ ok: true, alreadyGone: true });
+        }
+        const creator = snap.val() as { stripeAccountId?: string };
+        const stripeAccountId = creator.stripeAccountId;
+
+        if (stripeAccountId) {
+          try {
+            await stripe.oauth.deauthorize({
+              client_id: env.stripeClientId,
+              stripe_user_id: stripeAccountId,
+            });
+          } catch (err: any) {
+            // Already deauthorized or account closed: log and continue so the
+            // Firebase row still gets removed.
+            req.log.warn(
+              { stripeAccountId, code: err?.code },
+              "Stripe deauthorize failed, removing Firebase record anyway"
+            );
+          }
+        }
+
+        await db.ref(`/creators/${creatorId}`).remove();
+        req.log.info({ creatorId, stripeAccountId }, "Creator offboarded");
+        return reply.send({ ok: true });
+      } catch (err: any) {
+        req.log.error(err, "Failed to offboard creator");
+        return reply.status(500).send({ error: err.message });
+      }
+    }
+  );
+
+  fastify.post<{ Body: { paymentIntentId: string } }>(
+    "/refund",
+    { preHandler: requireServiceToken },
+    async (req, reply) => {
+      const { paymentIntentId } = req.body ?? {};
+      if (!paymentIntentId) {
+        return reply.status(400).send({ error: "paymentIntentId required" });
+      }
+      try {
+        const refund = await stripe.refunds.create({
+          payment_intent: paymentIntentId,
+        });
+        req.log.info(
+          { paymentIntentId, refundId: refund.id, status: refund.status },
+          "Refund created"
+        );
+        return reply.send({ ok: true, refundId: refund.id, status: refund.status });
+      } catch (err: any) {
+        if (err?.code === "charge_already_refunded") {
+          return reply.send({ ok: true, alreadyRefunded: true });
+        }
+        req.log.error(err, "Failed to create refund");
+        return reply.status(500).send({ error: err.message });
+      }
+    }
+  );
 
   fastify.get("/connect-refresh", async (_req, reply) => {
     return reply.type("text/html").send(`
