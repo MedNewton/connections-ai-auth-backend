@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import { env } from "./env.js";
 import { auth } from "./auth.js";
 import { stripeRoutes } from "./stripe-routes.js";
+import { firebaseTokenRoutes } from "./firebase-token-routes.js";
 import { adminRoutes } from "./admin-routes.js";
 
 
@@ -78,5 +79,6 @@ app.get("/auth/google", async (req, reply) => {
 
 app.register(stripeRoutes, { prefix: "/stripe" });
 app.register(adminRoutes, { prefix: "/admin" });
+app.register(firebaseTokenRoutes, { prefix: "/firebase" });
 
 await app.listen({ port: env.port, host: "0.0.0.0" });
