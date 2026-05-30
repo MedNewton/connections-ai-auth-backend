@@ -37,7 +37,32 @@ export const auth = betterAuth({
     expo(),
     emailOTP({
       expiresIn: 10 * 60,
+      // App Store review test account: return a fixed OTP for the review
+      // email so Apple can sign in without receiving a real code. Returning
+      // undefined for everyone else lets better-auth generate its normal
+      // random OTP (see email-otp plugin: `generateOTP(...) || default`).
+      generateOTP({ email }) {
+        if (
+          env.appleReviewEmail &&
+          email.toLowerCase() === env.appleReviewEmail
+        ) {
+          return env.appleReviewOtp;
+        }
+        return undefined;
+      },
       async sendVerificationOTP({ email, otp, type }) {
+        // Don't send a real email for the App Store review account.
+        if (
+          env.appleReviewEmail &&
+          email.toLowerCase() === env.appleReviewEmail
+        ) {
+          console.log("[OTP] App Store review account, skipping email", {
+            email,
+            type,
+          });
+          return;
+        }
+
         const subject =
           type === "sign-in"
             ? "Your sign-in code"

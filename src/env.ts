@@ -32,4 +32,10 @@ export const env = {
   firebaseClientEmail: required("FIREBASE_CLIENT_EMAIL"),
   firebasePrivateKey: required("FIREBASE_PRIVATE_KEY"),
   serviceToken: required("SERVICE_TOKEN"),
+
+  // App Store review test account. When APPLE_REVIEW_EMAIL is empty the
+  // bypass is fully inert. Set it only on the review deployment, and unset
+  // it once Apple approval is granted.
+  appleReviewEmail: optional("APPLE_REVIEW_EMAIL", "").toLowerCase(),
+  appleReviewOtp: optional("APPLE_REVIEW_OTP", "000000"),
 };
