@@ -24,6 +24,14 @@ export const env = {
   resendApiKey: required("RESEND_API_KEY"),
   googleClientId: required("GOOGLE_CLIENT_ID"),
   googleClientSecret: required("GOOGLE_CLIENT_SECRET"),
+  // Sign in with Apple (native Expo flow). clientId == iOS bundle id since the
+  // native id-token flow verifies against the app bundle, not a Services ID.
+  appleClientId: required("APPLE_CLIENT_ID"),
+  appleTeamId: required("APPLE_TEAM_ID"),
+  appleKeyId: required("APPLE_KEY_ID"),
+  applePrivateKey: optional("APPLE_PRIVATE_KEY", ""),
+  applePrivateKeyPath: optional("APPLE_PRIVATE_KEY_PATH", ""),
+  appleBundleId: required("APPLE_APP_BUNDLE_IDENTIFIER"),
   stripeSecretKey: required("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
   stripeClientId : required("STRIPE_CLIENT_ID"),

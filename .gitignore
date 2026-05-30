@@ -2,6 +2,9 @@ node_modules
 # Keep environment variables out of version control
 .env
 
+# Apple Sign in private key (.p8) — never commit
+*.p8
+
 /src/generated/prisma
 
 /src/generated/prisma

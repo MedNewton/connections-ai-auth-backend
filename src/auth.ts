@@ -5,6 +5,22 @@ import { env } from "./env.js";
 import { sendEmail } from "./mailer.js";
 import { emailOTP } from "better-auth/plugins";
 import { expo } from "@better-auth/expo";
+import {
+  generateAppleClientSecret,
+  readApplePrivateKey,
+} from "./lib/appleClientSecret.js";
+
+// Apple's "client secret" is a signed ES256 JWT (valid up to 6 months). Mint a
+// fresh one at startup from the .p8 key so we never hand-rotate it.
+const appleClientSecret = await generateAppleClientSecret({
+  clientId: env.appleClientId,
+  teamId: env.appleTeamId,
+  keyId: env.appleKeyId,
+  privateKey: readApplePrivateKey({
+    inline: env.applePrivateKey,
+    path: env.applePrivateKeyPath,
+  }),
+});
 
 export const auth = betterAuth({
   secret: env.authSecret,
@@ -21,13 +37,20 @@ export const auth = betterAuth({
     "exp://*",
     "exps://",
     "exps://*",
-    "https://auth.expo.io", 
+    "https://auth.expo.io",
+    "https://appleid.apple.com",
   ],
   socialProviders: {
     google: {
       clientId: env.googleClientId,
       clientSecret: env.googleClientSecret,
       prompt: "select_account",
+    },
+    apple: {
+      clientId: env.appleClientId,
+      clientSecret: appleClientSecret,
+      // Native Expo flow verifies the id token against the iOS bundle id.
+      appBundleIdentifier: env.appleBundleId,
     },
   },
 
